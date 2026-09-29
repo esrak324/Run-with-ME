@@ -1,0 +1,6 @@
+{
+  "name": "Run with ME - CSE Career & Higher Study Ecosystem",
+  "description": "Empowering Computer Science & Engineering students in Bangladesh with local tech job market insights, career roadmaps, senior mentors, and European Master's degree guidance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
