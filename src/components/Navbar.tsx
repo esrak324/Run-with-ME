@@ -35,28 +35,37 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="fixed top-0 left-0 w-full z-50 bg-[#faf8ff]/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(11,19,43,0.06)] border-b border-surface-container">
-        <div className="h-20 max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-12 flex items-center justify-between gap-4">
-          {/* Logo & Brand Identity */}
-          <div
-            className="flex items-center gap-3 shrink-0 cursor-pointer select-none"
-            onClick={() => handleNavClick('home')}
-          >
-            <img
-              alt="Run with ME Logo"
-              className="h-9 w-auto object-contain"
-              src="https://lh3.googleusercontent.com/aida/AEtjO1Ucw5UgRmHQ8IDWa5jklXh6MPswzxZmMjj4Fzr4PYrpnHOM8ADxfssAtnGz4bUcUJjJVIJklM24iNEEfu_p8IW6Hk3SjK5GG5DoiZ_1urfjB8Yi4jWPGjVRheU69DpmGvfmy7YgIq2XpFns4fQGCC9QYB5YO0EJmhFcyKwEXGo_InKlchJqwLAYhB9Kq4p9pJz1xICugsd3bmmMUiERDrEFU-Ped5MnyUpuXB8zc0WStNErKDVct6VqxMg"
-            />
-            <div className="flex flex-col">
-              <span className="font-bold text-lg text-on-surface tracking-tight leading-tight">
-                Run with ME
-              </span>
-              <span className="text-[10px] text-secondary uppercase tracking-widest font-semibold">
-                CSE Career Ecosystem
-              </span>
-            </div>
-          </div>
+      <header className="sticky top-0 z-50 bg-surface-container-lowest border-b border-surface-container-high">
+        <div className="mx-auto flex items-center justify-between px-4 py-3">
+     <div
+  className="flex items-center gap-3 shrink-0 cursor-pointer select-none"
+  onClick={() => handleNavClick('home')}
+>
+  {/* Logo */}
+  <div className="relative h-10 w-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 via-violet-600 to-pink-500 shadow-md">
+    <span className="text-white font-extrabold text-lg tracking-tight">
+      ME
+    </span>
 
+    {/* Small career/code symbol */}
+    <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white flex items-center justify-center shadow-sm">
+      <span className="text-[9px] font-black text-violet-600">
+        &lt;/&gt;
+      </span>
+    </span>
+  </div>
+
+  {/* Brand Name */}
+  <div className="flex flex-col">
+    <span className="font-bold text-lg text-on-surface tracking-tight leading-tight">
+      Run with ME
+    </span>
+
+    <span className="text-[10px] text-secondary uppercase tracking-widest font-semibold">
+      CSE Career Ecosystem
+    </span>
+  </div>
+</div>
           {/* Desktop Navigation */}
           <nav className="hidden xl:flex items-center gap-5 2xl:gap-6 relative">
             {navItems.map((item) => {
