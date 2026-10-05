@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookingFormData, Specialist } from '../types';
+import { submitConsultationRequest, isSupabaseConfigured } from '../lib/supabase';
 
 interface ConsultationModalProps {
   isOpen: boolean;
@@ -14,27 +15,72 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
   preselectedTopic,
   preselectedSpecialist,
 }) => {
+  const getInitialTopic = () => {
+    if (preselectedTopic) return preselectedTopic;
+    if (preselectedSpecialist) {
+      return `1-on-1 Mentorship with ${preselectedSpecialist.name} (${preselectedSpecialist.role})`;
+    }
+    return 'Local Software Engineer Job Prep (Dhaka)';
+  };
+
   const [formData, setFormData] = useState<BookingFormData>({
     fullName: '',
     email: '',
     phoneWhatsApp: '',
-    areaOfInterest: preselectedTopic || (preselectedSpecialist ? `1-on-1 Mentorship with ${preselectedSpecialist.name} (${preselectedSpecialist.role})` : 'Local Software Engineer Job Prep (Dhaka)'),
+    areaOfInterest: getInitialTopic(),
     academicBackground: '',
     targetTimeline: 'Fall 2026 / Next 6 Months',
     notes: '',
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        areaOfInterest: getInitialTopic(),
+      }));
+      setErrorMessage(null);
+    }
+  }, [isOpen, preselectedTopic, preselectedSpecialist]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const result = await submitConsultationRequest({
+      full_name: formData.fullName.trim(),
+      email: formData.email.trim(),
+      phone_whatsapp: formData.phoneWhatsApp.trim(),
+      area_of_interest: formData.areaOfInterest,
+      academic_background: formData.academicBackground.trim(),
+      target_timeline: formData.targetTimeline,
+      notes: (formData.notes || '').trim(),
+    });
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      setIsDemoMode(Boolean(result.isDemo));
+      setSubmitted(true);
+    } else {
+      setErrorMessage(
+        result.error || 'Failed to submit consultation request. Please check your connection and try again.'
+      );
+    }
   };
 
   const handleResetAndClose = () => {
     setSubmitted(false);
+    setIsSubmitting(false);
+    setErrorMessage(null);
     setFormData({
       fullName: '',
       email: '',
@@ -73,6 +119,17 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
               <div><strong>Topic:</strong> {formData.areaOfInterest}</div>
               <div><strong>Academic info:</strong> {formData.academicBackground || 'Not specified'}</div>
               <div><strong>Intended timeline:</strong> {formData.targetTimeline}</div>
+              {formData.notes && (
+                <div><strong>Notes:</strong> {formData.notes}</div>
+              )}
+              <div className="pt-2 border-t border-surface-container flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                <span className="material-symbols-outlined text-[14px]">database</span>
+                <span>
+                  {isDemoMode
+                    ? 'Saved locally (Demo mode - Configure VITE_SUPABASE_URL in .env to persist to PostgreSQL)'
+                    : 'Safely recorded in Supabase PostgreSQL (consultation_requests)'}
+                </span>
+              </div>
             </div>
             <button
               onClick={handleResetAndClose}
@@ -84,9 +141,17 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
         ) : (
           <>
             <div className="mb-6">
-              <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
-                Direct Mentorship & Higher Study Strategy
-              </span>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
+                  Direct Mentorship & Higher Study Strategy
+                </span>
+                {isSupabaseConfigured && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    Supabase Connected
+                  </span>
+                )}
+              </div>
               <h3 className="text-2xl font-bold text-on-surface mt-1">
                 Book Your 1-on-1 Guidance Session
               </h3>
@@ -96,6 +161,25 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                   : 'Route your query directly to Md. Masruk Esrak or a domain specialist.'}
               </p>
             </div>
+
+            {errorMessage && (
+              <div className="mb-4 p-3.5 rounded-2xl bg-red-50 text-red-700 border border-red-200 text-xs flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-[18px] text-red-500 shrink-0 mt-0.5">
+                  error
+                </span>
+                <div className="flex-1">
+                  <p className="font-semibold">Submission Error</p>
+                  <p className="mt-0.5 text-red-600">{errorMessage}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="text-red-400 hover:text-red-600 p-0.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -108,7 +192,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   placeholder="e.g. Tanvir Chowdhury"
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                 />
               </div>
 
@@ -123,7 +208,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="name@domain.com"
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                   />
                 </div>
 
@@ -137,7 +223,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                     value={formData.phoneWhatsApp}
                     onChange={(e) => setFormData({ ...formData, phoneWhatsApp: e.target.value })}
                     placeholder="+880 1700-000000"
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -149,7 +236,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 <select
                   value={formData.areaOfInterest}
                   onChange={(e) => setFormData({ ...formData, areaOfInterest: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                 >
                   <option>Local Software Engineer Job Prep (Dhaka)</option>
                   <option>Full Stack Developer Career Roadmap Review</option>
@@ -177,7 +265,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                   value={formData.academicBackground}
                   onChange={(e) => setFormData({ ...formData, academicBackground: e.target.value })}
                   placeholder="e.g. BRAC University, 7th Semester, CGPA 3.42"
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                 />
               </div>
 
@@ -188,7 +277,8 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 <select
                   value={formData.targetTimeline}
                   onChange={(e) => setFormData({ ...formData, targetTimeline: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60"
                 >
                   <option>Immediate (Next 1-2 Months)</option>
                   <option>Fall 2026 Intake</option>
@@ -197,11 +287,33 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
                 </select>
               </div>
 
+              <div>
+                <label className="block text-[12px] font-bold text-on-surface mb-1">
+                  Notes / Specific Questions <span className="font-normal text-on-surface-variant">(Optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.notes || ''}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Any specific questions, target universities, or tech stack topics you want to cover..."
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-surface-container text-sm focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-60 resize-none"
+                />
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-secondary text-white font-bold text-sm hover:bg-secondary-container transition-all shadow-md mt-4 active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-xl bg-secondary text-white font-bold text-sm hover:bg-secondary-container transition-all shadow-md mt-4 active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Confirm Strategy Session Request
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>Saving Consultation Request...</span>
+                  </>
+                ) : (
+                  <span>Confirm Strategy Session Request</span>
+                )}
               </button>
 
               <p className="text-[11px] text-on-surface-variant text-center mt-2">
@@ -214,3 +326,4 @@ export const ConsultationModal: React.FC<ConsultationModalProps> = ({
     </div>
   );
 };
+
